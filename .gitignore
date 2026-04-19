@@ -138,3 +138,5 @@ k_metrics.csv
 .vscode/
 .idea/
 
+.vercel
+.env*.local

@@ -179,7 +179,6 @@ if st.session_state.get('results'):
         ])
         fig_bar = px.bar(score_df.melt(id_vars='Algo'), x='Algo', y='value', color='variable', 
                          barmode='group', title="Algorithm Comparison", animation_frame='variable')
-st.plotly_chart(fig_bar, width='stretch')
         st.plotly_chart(fig_bar, use_container_width=True)
 
     with tab2:
@@ -200,7 +199,7 @@ st.plotly_chart(fig_bar, width='stretch')
             fig_elbow.add_trace(go.Scatter(x=elbow_df['k'], y=elbow_df['WCSS'], mode='lines+markers', name='WCSS (Elbow)', line=dict(color='red')))
             fig_elbow.add_trace(go.Scatter(x=elbow_df['k'], y=elbow_df['Silhouette'], mode='lines+markers', name='Silhouette (Max)', line=dict(color='blue')))
             fig_elbow.update_layout(title="Elbow Method: Optimal K Selection", xaxis_title="Number of Clusters (k)", yaxis_title="Score")
-st.plotly_chart(fig_elbow, width='stretch')
+            st.plotly_chart(fig_elbow, use_container_width=True)
             best_k_idx = np.argmax(silhouettes)
             optimal_k = list(k_range)[best_k_idx]
             st.success(f"**Optimal K from Silhouette: {optimal_k}** (Score: {silhouettes[best_k_idx]:.3f})")

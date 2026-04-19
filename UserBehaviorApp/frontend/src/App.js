@@ -1,5 +1,5 @@
 import { BrowserRouter as Router } from 'react-router-dom';
-import DashboardNew from './DashboardNew';
+import DashboardNew from './MLAnalyticsDirect';
 import { AuthProvider } from './AuthContext';
 
 function App() {
