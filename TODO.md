@@ -1,9 +1,9 @@
-# Task Progress: Fix Frontend Input for ML Analysis
+# Dashboard Lint & Optimize TODO
 
-1. [x] Edit DashboardNew.js: Change fetch URL from 8003 to 8000 + default fields 'InvoiceNo','user_id','quantity','price'
-2. [x] Fix backend imports in main.py (__init__.py, ml_service)
-3. [x] Run backend: cd UserBehaviorApp/backend && uvicorn main:app --reload
-4. [ ] Test frontend manual input with sample data
-5. [ ] Test Streamlit dashboard (backup)
-6. [x] Complete
-
+## Steps:
+- [x] 1. Create TODO.md with plan steps
+- [x] 2. Edit DashboardComplete.js: Remove ESLint disable, dead code (unused states/functions), fix handleAnalyze assignment, optimize useEffect
+- [x] 3. Verified: DashboardComplete.js lint clean, no ESLint issues, syntax ok.
+- [x] 4. Run `cd UserBehaviorApp/frontend && npm run build` to test.
+- [x] 5. Run `cd UserBehaviorApp/frontend && vercel --prod` for deploy.
+- [x] 6. Task complete!
