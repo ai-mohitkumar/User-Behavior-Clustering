@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars */
+
 import React, { useState, useEffect } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -14,6 +14,7 @@ const MLAnalyticsDirect = () => {
 
   const results = {
     metrics: { silhouette: 0.7234, icso_score: 12.45, davies_bouldin: 0.68 },
+    anomalies: { count: 4, percentage: 5 },
     elbow: {
       data: [
         {k: 2, wcss: 250, silhouette: 62},
@@ -41,6 +42,7 @@ const MLAnalyticsDirect = () => {
       {algo: 'Hierarchical', score: 78}
     ]
   };
+
 
 useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
