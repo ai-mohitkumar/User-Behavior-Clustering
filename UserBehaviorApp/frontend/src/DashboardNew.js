@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -68,11 +69,7 @@ const Dashboard = () => {
       const file = new File([blob], 'data.csv', { type: 'text/csv' });
 
       const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('http://127.0.0.1:8003/analyze-intelligent', {
-        method: 'POST',
-        body: formData,
+formData.append('file', file);\n\n      const response = await fetch('http://127.0.0.1:8000/analyze-intelligent', {\n        method: 'POST',\n        body: formData,\n      });\n
       });
 
       const data = await response.json();

@@ -16,17 +16,17 @@ import ml_service
 import ml_service_intelligent
 from ml_service import run_analysis
 from ml_service_intelligent import run_intelligent_analysis
-from .auth import (create_access_token, get_password_hash, verify_password, get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES)
-from .database import get_db, engine, SessionLocal, Base
-from .models import User, Dataset, Result
-from .schemas import UserCreate, Token, DatasetCreate, ResultOut
+from auth import (create_access_token, get_password_hash, verify_password, get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES)
+from database import get_db, engine, SessionLocal, Base
+from models import User, Dataset, Result
+from schemas import UserCreate, Token, DatasetCreate, ResultOut
 from pydantic import BaseModel
 
 # Setup logging
 logger = logging.getLogger(__name__)
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+# Create tables (skip if exist)
+Base.metadata.create_all(bind=engine, checkfirst=True)
 
 app = FastAPI(title="User Behavior Intelligence Platform", version="2.0")
 

@@ -179,6 +179,7 @@ if st.session_state.get('results'):
         ])
         fig_bar = px.bar(score_df.melt(id_vars='Algo'), x='Algo', y='value', color='variable', 
                          barmode='group', title="Algorithm Comparison", animation_frame='variable')
+st.plotly_chart(fig_bar, width='stretch')
         st.plotly_chart(fig_bar, use_container_width=True)
 
     with tab2:
@@ -199,7 +200,7 @@ if st.session_state.get('results'):
             fig_elbow.add_trace(go.Scatter(x=elbow_df['k'], y=elbow_df['WCSS'], mode='lines+markers', name='WCSS (Elbow)', line=dict(color='red')))
             fig_elbow.add_trace(go.Scatter(x=elbow_df['k'], y=elbow_df['Silhouette'], mode='lines+markers', name='Silhouette (Max)', line=dict(color='blue')))
             fig_elbow.update_layout(title="Elbow Method: Optimal K Selection", xaxis_title="Number of Clusters (k)", yaxis_title="Score")
-            st.plotly_chart(fig_elbow, use_container_width=True)
+st.plotly_chart(fig_elbow, width='stretch')
             best_k_idx = np.argmax(silhouettes)
             optimal_k = list(k_range)[best_k_idx]
             st.success(f"**Optimal K from Silhouette: {optimal_k}** (Score: {silhouettes[best_k_idx]:.3f})")
@@ -211,7 +212,7 @@ if st.session_state.get('results'):
                                    x='PC1', y='PC2', z='PC3', color='cluster', 
                                    title=f"PCA 3D (Var Explained: {sum(pca.explained_variance_ratio_):.1%})")
             fig_3d.update_traces(marker=dict(size=4))
-            st.plotly_chart(fig_3d, use_container_width=True)
+st.plotly_chart(fig_3d, width='stretch')
 
     with tab3:
         st.subheader("PCA 2D vs LDA")
@@ -221,7 +222,7 @@ if st.session_state.get('results'):
             X_pca2 = pca2.fit_transform(StandardScaler().fit_transform(df[numeric_features].fillna(0)))
             fig_pca2 = px.scatter(pd.DataFrame({'PC1': X_pca2[:,0], 'PC2': X_pca2[:,1], 'cluster': results['labels']}),
                                   x='PC1', y='PC2', color='cluster')
-            st.plotly_chart(fig_pca2, use_container_width=True)
+st.plotly_chart(fig_pca2, width='stretch')
         with col_lda:
             # Auto-generate segments for LDA if missing
             if 'user_segment' not in df.columns:
@@ -242,13 +243,13 @@ if st.session_state.get('results'):
                 'LD3': X_lda[:,2] if X_lda.shape[1] > 2 else np.zeros(len(df)),
                 'segment': le.inverse_transform(y)
             }), x='LD1', y='LD2', z='LD3', color='segment', title="LDA 3D Components (Auto-segments)")
-            st.plotly_chart(fig_lda, use_container_width=True)
+st.plotly_chart(fig_lda, width='stretch')
 
     with tab4:
         # Cluster profiles
         cluster_means = df.groupby('cluster')[numeric_features].mean()
         fig_heatmap = px.imshow(cluster_means.T, color_continuous_scale='RdYlBu_r', title="Cluster Feature Heatmap")
-        st.plotly_chart(fig_heatmap, use_container_width=True)
+st.plotly_chart(fig_heatmap, width='stretch')
         # Anomalies bubble
         df['anomaly_size'] = df['anomaly'].astype(int) * 20 + 5
         fig_anom = px.scatter(df, x='total_spent' if 'total_spent' in df else numeric_features[0], 

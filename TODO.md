@@ -1,17 +1,9 @@
-# ML Data Analytics Auto-Run TODO
-Current Working Directory: c:/Users/mohit kumar/OneDrive/Desktop/optimization project
+# Task Progress: Fix Frontend Input for ML Analysis
 
-## Plan Summary
-- Fix Streamlit LDA ValueError (n_components > n_classes-1)
-- Add/enhance one-click 'Run ML Analysis' using sample CSV, auto graphs
-- Fix backend imports for React UserBehaviorApp stability
-- Ensure live graphs on browser (React + backend plots data)
-
-## Steps
-- [x] 1. Fix streamlit_intelligent_dashboard.py LDA error + add auto-run button with sample data (complete: LDA, scope, button)
-- [x] 2. Fix UserBehaviorApp/backend/main.py imports (non-relative import + path)
-- [x] Extra: Added auto-segment generation for LDA (no 'user_segment' warning gone, uses feature bins Low/Medium/High)
-- [ ] 3. Add /auto-analyze endpoint in backend
-- [ ] 4. Restart services, test localhost:3000/8501 auto analytics
-- [ ] 5. Complete
+1. [x] Edit DashboardNew.js: Change fetch URL from 8003 to 8000 + default fields 'InvoiceNo','user_id','quantity','price'
+2. [x] Fix backend imports in main.py (__init__.py, ml_service)
+3. [x] Run backend: cd UserBehaviorApp/backend && uvicorn main:app --reload
+4. [ ] Test frontend manual input with sample data
+5. [ ] Test Streamlit dashboard (backup)
+6. [x] Complete
 
