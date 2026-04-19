@@ -45,7 +45,6 @@ const MLAnalyticsDirect = () => {
 
 
 useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     // Generate PCA points
     const data = [];
     results.clusters.forEach(cluster => {
@@ -59,7 +58,7 @@ useEffect(() => {
       }
     });
     setClusterData(data);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 to-slate-900 p-8">
