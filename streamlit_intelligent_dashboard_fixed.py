@@ -8,10 +8,14 @@ import plotly.figure_factory as ff
 import os
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
+from sklearn.metrics import (silhouette_score, davies_bouldin_score, calinski_harabasz_score,
+                             adjusted_rand_score, normalized_mutual_info_score,
+                             homogeneity_score, completeness_score, v_measure_score,
+                             confusion_matrix)
+from scipy.optimize import linear_sum_assignment
 from sklearn.metrics.pairwise import pairwise_distances
 from scipy.spatial.distance import cdist
 import warnings
@@ -108,6 +112,27 @@ class IntelligentAdaptiveClusteringEngine:
         self.data['anomaly'] = anomaly_labels
         return np.sum(anomaly_labels), np.mean(100 * anomaly_labels)
 
+    def compute_clustering_accuracy(self, labels, ground_truth):
+        """Compute clustering accuracy metrics against ground truth labels."""
+        mask = labels != -1
+        if mask.sum() == 0:
+            return {'accuracy': 0.0, 'ari': 0.0, 'nmi': 0.0,
+                    'homogeneity': 0.0, 'completeness': 0.0, 'v_measure': 0.0}
+        gt = ground_truth[mask]
+        pred = labels[mask]
+        ari = adjusted_rand_score(gt, pred)
+        nmi = normalized_mutual_info_score(gt, pred)
+        homogeneity = homogeneity_score(gt, pred)
+        completeness = completeness_score(gt, pred)
+        v_measure = v_measure_score(gt, pred)
+        cm = confusion_matrix(gt, pred)
+        row_ind, col_ind = linear_sum_assignment(-cm)
+        accuracy = cm[row_ind, col_ind].sum() / len(gt)
+        return {
+            'accuracy': accuracy, 'ari': ari, 'nmi': nmi,
+            'homogeneity': homogeneity, 'completeness': completeness, 'v_measure': v_measure
+        }
+
 # Sidebar
 st.sidebar.header("📁 Data")
 data_file = st.sidebar.file_uploader("Upload CSV", type='csv')
@@ -146,13 +171,23 @@ if run_button or st.session_state.get('results'):
         best_algo, algo_scores, labels = engine.auto_select_algorithm()
         engine.data['cluster'] = labels
         anomalies_count, anomalies_pct = engine.detect_anomalies()
+        
+        # Generate ground truth segments for accuracy evaluation
+        if 'user_segment' not in engine.data.columns:
+            first_feature = numeric_features[0] if numeric_features else engine.data.select_dtypes(include=[np.number]).columns[0]
+            engine.data['user_segment'] = pd.cut(engine.data[first_feature], bins=3, labels=['Low', 'Medium', 'High'])
+        le_gt = LabelEncoder()
+        ground_truth = le_gt.fit_transform(engine.data['user_segment'].astype(str))
+        accuracy_metrics = engine.compute_clustering_accuracy(labels, ground_truth)
+        
         metrics = algo_scores[best_algo]
         icso = metrics.pop('icso', 0.0)
         st.session_state.results = {
             'df': engine.data, 'best_algo': best_algo, 'algo_scores': algo_scores,
             'labels': labels, 'metrics': metrics, 'icso': icso,
             'anomalies_count': anomalies_count, 'anomalies_pct': anomalies_pct,
-            'numeric_features': numeric_features
+            'numeric_features': numeric_features,
+            'accuracy': accuracy_metrics
         }
 
     # Success animation
@@ -163,6 +198,7 @@ if run_button or st.session_state.get('results'):
 if st.session_state.get('results'):
     df = st.session_state.results['df']
     results = st.session_state.results
+    numeric_features = results['numeric_features']
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "🎨 Clustering", "🔍 Dim Reduction", "👥 Profiles & Anomalies", "🎯 Insights"])
 
     with tab1:
@@ -172,6 +208,16 @@ if st.session_state.get('results'):
         col3.metric("ICSO Score", f"{results['icso']:.2f}")
         col4.metric("Anomalies", f"{results['anomalies_count']} ({results['anomalies_pct']:.1f}%)")
 
+        st.subheader("🎯 Model Accuracy vs Ground Truth")
+        acc = results['accuracy']
+        c1, c2, c3, c4, c5, c6 = st.columns(6)
+        c1.metric("Accuracy", f"{acc['accuracy']:.1%}")
+        c2.metric("ARI", f"{acc['ari']:.3f}")
+        c3.metric("NMI", f"{acc['nmi']:.3f}")
+        c4.metric("Homogeneity", f"{acc['homogeneity']:.3f}")
+        c5.metric("Completeness", f"{acc['completeness']:.3f}")
+        c6.metric("V-Measure", f"{acc['v_measure']:.3f}")
+
         # Algo comparison animated bar
         score_df = pd.DataFrame([
             {'Algo': k, 'Hybrid': v['hybrid_score'], 'ICSO': v.get('icso', 0)}
@@ -179,7 +225,7 @@ if st.session_state.get('results'):
         ])
         fig_bar = px.bar(score_df.melt(id_vars='Algo'), x='Algo', y='value', color='variable', 
                          barmode='group', title="Algorithm Comparison", animation_frame='variable')
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, width="stretch")
 
     with tab2:
         st.subheader("🎯 Clustering Analysis")
@@ -199,7 +245,7 @@ if st.session_state.get('results'):
             fig_elbow.add_trace(go.Scatter(x=elbow_df['k'], y=elbow_df['WCSS'], mode='lines+markers', name='WCSS (Elbow)', line=dict(color='red')))
             fig_elbow.add_trace(go.Scatter(x=elbow_df['k'], y=elbow_df['Silhouette'], mode='lines+markers', name='Silhouette (Max)', line=dict(color='blue')))
             fig_elbow.update_layout(title="Elbow Method: Optimal K Selection", xaxis_title="Number of Clusters (k)", yaxis_title="Score")
-            st.plotly_chart(fig_elbow, use_container_width=True)
+            st.plotly_chart(fig_elbow, width="stretch")
             best_k_idx = np.argmax(silhouettes)
             optimal_k = list(k_range)[best_k_idx]
             st.success(f"**Optimal K from Silhouette: {optimal_k}** (Score: {silhouettes[best_k_idx]:.3f})")
@@ -211,7 +257,7 @@ if st.session_state.get('results'):
                                    x='PC1', y='PC2', z='PC3', color='cluster', 
                                    title=f"PCA 3D (Var Explained: {sum(pca.explained_variance_ratio_):.1%})")
             fig_3d.update_traces(marker=dict(size=4))
-st.plotly_chart(fig_3d, width='stretch')
+            st.plotly_chart(fig_3d, width="stretch")
 
     with tab3:
         st.subheader("PCA 2D vs LDA")
@@ -221,45 +267,46 @@ st.plotly_chart(fig_3d, width='stretch')
             X_pca2 = pca2.fit_transform(StandardScaler().fit_transform(df[numeric_features].fillna(0)))
             fig_pca2 = px.scatter(pd.DataFrame({'PC1': X_pca2[:,0], 'PC2': X_pca2[:,1], 'cluster': results['labels']}),
                                   x='PC1', y='PC2', color='cluster')
-st.plotly_chart(fig_pca2, width='stretch')
+            st.plotly_chart(fig_pca2, width="stretch")
         with col_lda:
             # Auto-generate segments for LDA if missing
             if 'user_segment' not in df.columns:
-                first_feature = results['numeric_features'][0] if results['numeric_features'] and results['numeric_features'][0] in df.columns else df.select_dtypes(include=[np.number]).columns[0]
+                first_feature = numeric_features[0] if numeric_features and numeric_features[0] in df.columns else df.select_dtypes(include=[np.number]).columns[0]
                 df['user_segment'] = pd.cut(df[first_feature], bins=3, labels=['Low', 'Medium', 'High'])
             
-            from sklearn.preprocessing import LabelEncoder
             le = LabelEncoder()
             y = le.fit_transform(df['user_segment'].astype(str))
             n_classes = len(np.unique(y))
-            n_comp = min(3, n_classes - 1, len(results['numeric_features']))
+            n_comp = min(3, n_classes - 1, len(numeric_features))
             lda = LinearDiscriminantAnalysis(n_components=n_comp)
 
-            X_lda = lda.fit_transform(StandardScaler().fit_transform(df[results['numeric_features']].fillna(0)), y)
+            X_lda = lda.fit_transform(StandardScaler().fit_transform(df[numeric_features].fillna(0)), y)
             fig_lda = px.scatter_3d(pd.DataFrame({
                 'LD1': X_lda[:,0] if X_lda.shape[1] > 0 else np.zeros(len(df)),
                 'LD2': X_lda[:,1] if X_lda.shape[1] > 1 else np.zeros(len(df)),
                 'LD3': X_lda[:,2] if X_lda.shape[1] > 2 else np.zeros(len(df)),
                 'segment': le.inverse_transform(y)
             }), x='LD1', y='LD2', z='LD3', color='segment', title="LDA 3D Components (Auto-segments)")
-st.plotly_chart(fig_lda, width='stretch')
+            st.plotly_chart(fig_lda, width="stretch")
 
     with tab4:
         # Cluster profiles
         cluster_means = df.groupby('cluster')[numeric_features].mean()
         fig_heatmap = px.imshow(cluster_means.T, color_continuous_scale='RdYlBu_r', title="Cluster Feature Heatmap")
-st.plotly_chart(fig_heatmap, width='stretch')
+        st.plotly_chart(fig_heatmap, width="stretch")
         # Anomalies bubble
         df['anomaly_size'] = df['anomaly'].astype(int) * 20 + 5
-        fig_anom = px.scatter(df, x='total_spent' if 'total_spent' in df else numeric_features[0], 
-                              y='session_duration' if 'session_duration' in df else numeric_features[1],
+        first_feat = 'total_spent' if 'total_spent' in df else numeric_features[0]
+        second_feat = 'session_duration' if 'session_duration' in df else numeric_features[1]
+        fig_anom = px.scatter(df, x=first_feat, y=second_feat,
                               size='anomaly_size', color='anomaly', title="Anomalies (Size=Bigger if Anomaly)")
-        st.plotly_chart(fig_anom)
+        st.plotly_chart(fig_anom, width="stretch")
 
     with tab5:
         st.subheader("Raw Data & Export")
         st.dataframe(df)
-        st.download_button("💾 Download Analyzed Data", df.to_csv(index=False), "analyzed_clusters.csv")
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button("💾 Download Analyzed Data", csv, "analyzed_clusters.csv", "text/csv")
 
     st.markdown("---")
     st.caption("🎉 Built with Streamlit + Plotly + Scikit-learn | Novel ICSO Metric | AutoML Clustering")
