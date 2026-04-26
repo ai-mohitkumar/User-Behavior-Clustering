@@ -11,7 +11,11 @@ from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
+from sklearn.metrics import (silhouette_score, davies_bouldin_score, calinski_harabasz_score,
+                             adjusted_rand_score, normalized_mutual_info_score,
+                             homogeneity_score, completeness_score, v_measure_score,
+                             confusion_matrix)
+from scipy.optimize import linear_sum_assignment
 from sklearn.metrics.pairwise import pairwise_distances
 from scipy.spatial.distance import cdist
 import warnings
@@ -108,6 +112,27 @@ class IntelligentAdaptiveClusteringEngine:
         self.data['anomaly'] = anomaly_labels
         return np.sum(anomaly_labels), np.mean(100 * anomaly_labels)
 
+    def compute_clustering_accuracy(self, labels, ground_truth):
+        """Compute clustering accuracy metrics against ground truth labels."""
+        mask = labels != -1
+        if mask.sum() == 0:
+            return {'accuracy': 0.0, 'ari': 0.0, 'nmi': 0.0,
+                    'homogeneity': 0.0, 'completeness': 0.0, 'v_measure': 0.0}
+        gt = ground_truth[mask]
+        pred = labels[mask]
+        ari = adjusted_rand_score(gt, pred)
+        nmi = normalized_mutual_info_score(gt, pred)
+        homogeneity = homogeneity_score(gt, pred)
+        completeness = completeness_score(gt, pred)
+        v_measure = v_measure_score(gt, pred)
+        cm = confusion_matrix(gt, pred)
+        row_ind, col_ind = linear_sum_assignment(-cm)
+        accuracy = cm[row_ind, col_ind].sum() / len(gt)
+        return {
+            'accuracy': accuracy, 'ari': ari, 'nmi': nmi,
+            'homogeneity': homogeneity, 'completeness': completeness, 'v_measure': v_measure
+        }
+
 # Sidebar
 st.sidebar.header("📁 Data")
 data_file = st.sidebar.file_uploader("Upload CSV", type='csv')
@@ -146,13 +171,23 @@ if run_button or st.session_state.get('results'):
         best_algo, algo_scores, labels = engine.auto_select_algorithm()
         engine.data['cluster'] = labels
         anomalies_count, anomalies_pct = engine.detect_anomalies()
+        
+        # Generate ground truth segments for accuracy evaluation
+        if 'user_segment' not in engine.data.columns:
+            first_feature = numeric_features[0] if numeric_features else engine.data.select_dtypes(include=[np.number]).columns[0]
+            engine.data['user_segment'] = pd.cut(engine.data[first_feature], bins=3, labels=['Low', 'Medium', 'High'])
+        le_gt = LabelEncoder()
+        ground_truth = le_gt.fit_transform(engine.data['user_segment'].astype(str))
+        accuracy_metrics = engine.compute_clustering_accuracy(labels, ground_truth)
+        
         metrics = algo_scores[best_algo]
         icso = metrics.pop('icso', 0.0)
         st.session_state.results = {
             'df': engine.data, 'best_algo': best_algo, 'algo_scores': algo_scores,
             'labels': labels, 'metrics': metrics, 'icso': icso,
             'anomalies_count': anomalies_count, 'anomalies_pct': anomalies_pct,
-            'numeric_features': numeric_features
+            'numeric_features': numeric_features,
+            'accuracy': accuracy_metrics
         }
 
     # Success animation
@@ -172,6 +207,16 @@ if st.session_state.get('results'):
         col2.metric("Silhouette", f"{results['metrics']['silhouette']:.3f}")
         col3.metric("ICSO Score", f"{results['icso']:.2f}")
         col4.metric("Anomalies", f"{results['anomalies_count']} ({results['anomalies_pct']:.1f}%)")
+
+        st.subheader("🎯 Model Accuracy vs Ground Truth")
+        acc = results['accuracy']
+        c1, c2, c3, c4, c5, c6 = st.columns(6)
+        c1.metric("Accuracy", f"{acc['accuracy']:.1%}")
+        c2.metric("ARI", f"{acc['ari']:.3f}")
+        c3.metric("NMI", f"{acc['nmi']:.3f}")
+        c4.metric("Homogeneity", f"{acc['homogeneity']:.3f}")
+        c5.metric("Completeness", f"{acc['completeness']:.3f}")
+        c6.metric("V-Measure", f"{acc['v_measure']:.3f}")
 
         # Algo comparison animated bar
         score_df = pd.DataFrame([
